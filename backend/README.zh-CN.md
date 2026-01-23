@@ -1,5 +1,7 @@
 # Finance Manager Backend
 
+[English](README.md) | [中文](README.zh-CN.md)
+
 基于 **Spring Boot** 的个人理财管理系统后端服务，提供用户登录、账户管理、记账等 RESTful API。
 
 ---
