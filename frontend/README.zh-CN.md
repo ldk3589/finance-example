@@ -55,14 +55,14 @@
 
 - vite.config.js
 
-    server: {
-    proxy: {
-    '/api': {
-    target: 'http://localhost:8080',
-    changeOrigin: true
-    }
-    }
-    }
+      server: {
+      proxy: {
+      '/api': {
+      target: 'http://localhost:8080',
+      changeOrigin: true
+      }
+      }
+      }
 
 #### 🔐 登录逻辑说明
 
