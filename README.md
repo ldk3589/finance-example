@@ -1,4 +1,6 @@
 ﻿# finance-example
+ [English](README.md) | [中文](README.zh-CN.md)
+ 
 💰 Finance Example
 
 一个 前后端分离的个人理财管理系统，支持用户登录、自动创建账户、记账、账户管理及财务数据展示。
@@ -150,3 +152,4 @@
     用户信息保存至 localStorage
     
     未登录访问页面会被强制跳转登录页
+
