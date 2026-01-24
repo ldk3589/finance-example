@@ -3,8 +3,8 @@
 <mapper namespace="com.example.financemanager.mapper.AccountMapper">
     <update id="updateBalance">
         UPDATE account
-        SET balance = balance + #{amount}
-        WHERE id = #{accountId}
-          AND (balance + #{amount} >= 0)
+        SET balance = balance + #{delta}
+        WHERE id = #{id}
+          AND (balance + #{delta} >= 0)
     </update>
 </mapper>
