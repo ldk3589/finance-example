@@ -1,88 +1,103 @@
 package com.example.financemanager.service.impl;
 
 import com.example.financemanager.entity.Transaction;
-import com.example.financemanager.mapper.TransactionMapper;
 import com.example.financemanager.service.ReportService;
+import com.example.financemanager.service.TransactionService;
 import com.example.financemanager.vo.ReportVO;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class ReportServiceImpl implements ReportService {
 
-    // 注入 Mapper 以使用我们写的关联查询 SQL
-    private final TransactionMapper transactionMapper;
+    private final TransactionService transactionService;
 
-    public ReportServiceImpl(TransactionMapper transactionMapper) {
-        this.transactionMapper = transactionMapper;
+    public ReportServiceImpl(TransactionService transactionService) {
+        this.transactionService = transactionService;
     }
 
     @Override
     public ReportVO getStatistics(Long userId, String range) {
-        // 1. 计算统计的开始时间
-        LocalDateTime startTime = switch (range) {
-            case "week" -> LocalDateTime.now().minusWeeks(1);
-            case "month" -> LocalDateTime.now().minusMonths(1);
-            default -> LocalDateTime.of(2000, 1, 1, 0, 0); // 全部历史
-        };
+        LocalDateTime startTime = resolveStartTime(range);
+        List<Transaction> transactions = transactionService.listUserTransactionsFrom(userId, startTime);
 
-        // 2. 调用自定义 Mapper 方法进行 JOIN 查询，获取带有 categoryName 的流水数据
-        // 注意：此处 SQL 逻辑已在 TransactionMapper 中通过 @Select 定义
-        List<Transaction> allData = transactionMapper.selectWithCategory(userId, startTime);
+        ReportVO reportVO = new ReportVO();
+        reportVO.setList(transactions);
 
-        ReportVO vo = new ReportVO();
-        vo.setList(allData);
+        BigDecimal totalIncome = BigDecimal.ZERO;
+        BigDecimal totalExpense = BigDecimal.ZERO;
 
-        // 3. 计算收支总额
-        BigDecimal totalIncome = allData.stream()
-                .filter(t -> "INCOME".equals(t.getType()))
-                .map(Transaction::getAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        Map<String, BigDecimal> pieMap = new LinkedHashMap<>();
+        Map<String, ReportVO.BarItem> barMap = new LinkedHashMap<>();
 
-        BigDecimal totalExpense = allData.stream()
-                .filter(t -> "EXPENSE".equals(t.getType()))
-                .map(Transaction::getAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        for (Transaction transaction : transactions) {
+            BigDecimal amount = transaction.getAmount() == null ? BigDecimal.ZERO : transaction.getAmount();
 
-        vo.setTotalIncome(totalIncome);
-        vo.setTotalExpense(totalExpense);
+            if ("INCOME".equalsIgnoreCase(transaction.getType())) {
+                totalIncome = totalIncome.add(amount);
+            } else if ("EXPENSE".equalsIgnoreCase(transaction.getType())) {
+                totalExpense = totalExpense.add(amount);
 
-        // 4. 组装饼图数据 (仅统计支出部分的分类占比)
-        // 使用 t.getCategoryName() 获取 JOIN 出来的真实分类名称
-        Map<String, BigDecimal> expenseGroupData = allData.stream()
-                .filter(t -> "EXPENSE".equals(t.getType()))
-                .collect(Collectors.groupingBy(
-                        t -> t.getCategoryName() != null ? t.getCategoryName() : "未分类",
-                        Collectors.reducing(BigDecimal.ZERO, Transaction::getAmount, BigDecimal::add)
-                ));
+                String categoryName = transaction.getCategoryName() == null ? "未分类" : transaction.getCategoryName();
+                pieMap.put(categoryName, pieMap.getOrDefault(categoryName, BigDecimal.ZERO).add(amount));
+            }
 
-        List<Map<String, Object>> pieData = new ArrayList<>();
-        expenseGroupData.forEach((name, value) -> {
-            Map<String, Object> map = new HashMap<>();
-            map.put("name", name);
-            map.put("value", value);
-            pieData.add(map);
-        });
-        vo.setPieData(pieData);
+            String dayKey = formatDay(transaction.getCreateTime());
+            ReportVO.BarItem barItem = barMap.get(dayKey);
+            if (barItem == null) {
+                barItem = new ReportVO.BarItem();
+                barItem.setName(dayKey);
+                barMap.put(dayKey, barItem);
+            }
 
-        // 5. 组装柱状图数据 (简单收支对比)
-        List<Map<String, Object>> barData = new ArrayList<>();
-        barData.add(createBarItem("总收入", totalIncome));
-        barData.add(createBarItem("总支出", totalExpense));
-        vo.setBarData(barData);
+            if ("INCOME".equalsIgnoreCase(transaction.getType())) {
+                barItem.setIncome(barItem.getIncome().add(amount));
+            } else if ("EXPENSE".equalsIgnoreCase(transaction.getType())) {
+                barItem.setExpense(barItem.getExpense().add(amount));
+            }
+        }
 
-        return vo;
+        reportVO.setTotalIncome(totalIncome);
+        reportVO.setTotalExpense(totalExpense);
+
+        List<ReportVO.PieItem> pieData = new ArrayList<>();
+        for (Map.Entry<String, BigDecimal> entry : pieMap.entrySet()) {
+            ReportVO.PieItem item = new ReportVO.PieItem();
+            item.setName(entry.getKey());
+            item.setValue(entry.getValue());
+            pieData.add(item);
+        }
+        reportVO.setPieData(pieData);
+
+        reportVO.setBarData(new ArrayList<>(barMap.values()));
+
+        return reportVO;
     }
 
-    // 辅助方法：快速创建图表对象
-    private Map<String, Object> createBarItem(String name, BigDecimal value) {
-        Map<String, Object> item = new HashMap<>();
-        item.put("name", name);
-        item.put("value", value);
-        return item;
+    private LocalDateTime resolveStartTime(String range) {
+        LocalDate today = LocalDate.now();
+
+        if ("week".equalsIgnoreCase(range)) {
+            return today.minusDays(6).atStartOfDay();
+        }
+
+        if ("year".equalsIgnoreCase(range)) {
+            return LocalDate.of(today.getYear(), 1, 1).atStartOfDay();
+        }
+
+        return LocalDate.of(today.getYear(), today.getMonth(), 1).atStartOfDay();
+    }
+
+    private String formatDay(LocalDateTime time) {
+        if (time == null) {
+            return "";
+        }
+        LocalDate date = time.toLocalDate();
+        return date.toString();
     }
 }

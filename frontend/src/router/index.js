@@ -1,9 +1,10 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
+import { getToken } from '../utils/auth'
 
 const routes = [
   {
     path: '/',
-    redirect: '/login' // 根路径重定向到记账页
+    redirect: '/login'
   },
   {
     path: '/login',
@@ -13,23 +14,22 @@ const routes = [
   {
     path: '/register',
     name: 'Register',
-    component: () => import('../views/Register.vue'),
+    component: () => import('../views/Register.vue')
   },
   {
-    // 布局父路由：包含导航栏和退出逻辑
     path: '/',
-    component: () => import('../layout/Layout.vue'), 
-    meta: { requiresAuth: true }, // 父路由开启校验，子路由自动继承
+    component: () => import('../layout/Layout.vue'),
+    meta: { requiresAuth: true },
     children: [
       {
         path: 'add',
         name: 'Add',
-        component: () => import('../views/Add.vue'),
+        component: () => import('../views/Add.vue')
       },
       {
         path: 'report',
         name: 'Report',
-        component: () => import('../views/Report.vue'),
+        component: () => import('../views/Report.vue')
       }
     ]
   }
@@ -40,20 +40,20 @@ const router = createRouter({
   routes
 })
 
-/**
- * 全局导航守卫
- */
 router.beforeEach((to, from, next) => {
-  const token = localStorage.getItem('user_info')
-  
-  if (to.path === '/login' && token) {
+  const token = getToken()
+
+  if ((to.path === '/login' || to.path === '/register') && token) {
     next('/add')
-  } else if (to.meta.requiresAuth && !token) {
-    next('/login')
-  } else {
-    next()
+    return
   }
+
+  if (to.meta.requiresAuth && !token) {
+    next('/login')
+    return
+  }
+
+  next()
 })
 
 export default router
-

@@ -1,243 +1,306 @@
 <template>
-  <div class="add-container">
-    <el-card class="add-card" shadow="hover">
-      <template #header>
-        <div class="card-header">
-          <span class="title">✨ 新增记账</span>
-          <div class="header-ops">
-            <el-button type="success" plain icon="PieChart" @click="router.push('/report')">查看统计报表</el-button>
+  <div>
+    <div class="page-title">记账中心</div>
+    <div class="page-subtitle">快速记录收入和支出，并随时查看账户变化</div>
+
+    <div class="dashboard-grid">
+      <div>
+        <el-card>
+          <template #header>
+            <div class="toolbar-row">
+              <span class="section-title">新增记账</span>
+              <el-tag type="primary" round>实时更新余额</el-tag>
+            </div>
+          </template>
+
+          <el-form :model="form" :rules="rules" ref="formRef" label-position="top">
+            <el-row :gutter="16">
+              <el-col :span="12">
+                <el-form-item label="账户" prop="accountId">
+                  <div style="display: flex; gap: 10px; width: 100%">
+                    <el-select v-model="form.accountId" placeholder="请选择账户" style="flex: 1">
+                      <el-option
+                        v-for="item in accounts"
+                        :key="item.id"
+                        :label="`${item.name}（余额：${item.balance}）`"
+                        :value="item.id"
+                      />
+                    </el-select>
+                    <el-button @click="showAccountDialog = true">新增</el-button>
+                  </div>
+                </el-form-item>
+              </el-col>
+
+              <el-col :span="12">
+                <el-form-item label="类型" prop="type">
+                  <el-radio-group v-model="form.type" @change="handleTypeChange">
+                    <el-radio-button label="EXPENSE">支出</el-radio-button>
+                    <el-radio-button label="INCOME">收入</el-radio-button>
+                  </el-radio-group>
+                </el-form-item>
+              </el-col>
+            </el-row>
+
+            <el-row :gutter="16">
+              <el-col :span="12">
+                <el-form-item label="分类" prop="categoryId">
+                  <div style="display: flex; gap: 10px; width: 100%">
+                    <el-select v-model="form.categoryId" placeholder="请选择分类" style="flex: 1">
+                      <el-option
+                        v-for="item in filteredCategories"
+                        :key="item.id"
+                        :label="item.name"
+                        :value="item.id"
+                      />
+                    </el-select>
+                    <el-button @click="openCategoryDialog">新增</el-button>
+                  </div>
+                </el-form-item>
+              </el-col>
+
+              <el-col :span="12">
+                <el-form-item label="金额" prop="amount">
+                  <el-input-number
+                    v-model="form.amount"
+                    :min="0.01"
+                    :precision="2"
+                    style="width: 100%"
+                  />
+                </el-form-item>
+              </el-col>
+            </el-row>
+
+            <el-form-item label="备注">
+              <el-input
+                v-model="form.remark"
+                type="textarea"
+                :rows="4"
+                placeholder="比如：午饭、打车、工资到账"
+              />
+            </el-form-item>
+
+            <el-form-item style="margin-bottom: 0">
+              <el-button type="primary" :loading="loading" @click="handleSubmit">提交记账</el-button>
+              <el-button @click="resetForm">重置</el-button>
+            </el-form-item>
+          </el-form>
+        </el-card>
+      </div>
+
+      <div>
+        <el-card>
+          <template #header>
+            <div class="toolbar-row">
+              <span class="section-title">我的账户</span>
+              <el-tag round>共 {{ accounts.length }} 个</el-tag>
+            </div>
+          </template>
+
+          <div v-if="accounts.length === 0">
+            <el-empty description="暂无账户" />
           </div>
-        </div>
-      </template>
 
-      <el-form :model="form" :rules="rules" ref="formRef" label-position="top">
-        <el-row :gutter="20">
-          <el-col :span="24">
-            <el-form-item label="交易类型">
-              <el-radio-group v-model="form.type" @change="handleTypeChange" class="type-selector">
-                <el-radio-button label="EXPENSE">支出</el-radio-button>
-                <el-radio-button label="INCOME">收入</el-radio-button>
-              </el-radio-group>
-            </el-form-item>
-          </el-col>
-        </el-row>
+          <div v-else class="side-list">
+            <div class="side-item" v-for="item in accounts" :key="item.id">
+              <div class="side-item-name">{{ item.name }}</div>
+              <div class="side-item-value">¥ {{ Number(item.balance || 0).toFixed(2) }}</div>
+            </div>
+          </div>
+        </el-card>
 
-        <el-form-item label="选择账户" prop="accountId">
-          <el-select v-model="form.accountId" placeholder="请选择账户" style="width: 100%" @change="handleAccountChange">
-            <el-option v-for="item in accounts" :key="item.id" :label="item.name" :value="item.id">
-              <span>{{ item.name }}</span>
-              <span style="float: right; color: #999; font-size: 12px">余额: ¥{{ item.balance }}</span>
-            </el-option>
-            <el-option label="+ 添加其他账户" value="OTHER" style="color: #409eff; font-weight: bold" />
-          </el-select>
+        <div style="height: 18px"></div>
+
+        <el-card>
+          <template #header>
+            <span class="section-title">使用小提示</span>
+          </template>
+
+          <div class="side-list">
+            <div class="side-item">
+              <div class="side-item-name">收入类型</div>
+              <div class="side-item-value">会增加余额</div>
+            </div>
+            <div class="side-item">
+              <div class="side-item-name">支出类型</div>
+              <div class="side-item-value">会扣减余额</div>
+            </div>
+            <div class="side-item">
+              <div class="side-item-name">分类切换</div>
+              <div class="side-item-value">会自动刷新列表</div>
+            </div>
+          </div>
+        </el-card>
+      </div>
+    </div>
+
+    <el-dialog v-model="showAccountDialog" title="新增账户" width="420px">
+      <el-form :model="accountForm" label-position="top">
+        <el-form-item label="账户名称">
+          <el-input v-model="accountForm.name" placeholder="请输入账户名称" />
         </el-form-item>
-
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="金额" prop="amount">
-              <el-input-number v-model="form.amount" :precision="2" :min="0.01" style="width: 100%" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="分类" prop="categoryId">
-              <el-select v-model="form.categoryId" placeholder="选择分类" style="width: 100%" @change="handleCategoryChange">
-                <el-option v-for="cat in filteredCategories" :key="cat.id" :label="cat.name" :value="cat.id" />
-                <el-option label="+ 添加其他分类" value="OTHER" style="color: #409eff; font-weight: bold" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <el-form-item label="备注">
-          <el-input v-model="form.remark" type="textarea" :rows="3" placeholder="记录这笔账单的细节..." />
+        <el-form-item label="初始余额">
+          <el-input-number v-model="accountForm.balance" :min="0" :precision="2" style="width: 100%" />
         </el-form-item>
-
-        <div class="btn-group">
-          <el-button type="primary" size="large" :loading="loading" @click="onSubmit" round>保存并上报</el-button>
-        </div>
       </el-form>
-    </el-card>
+
+      <template #footer>
+        <el-button @click="showAccountDialog = false">取消</el-button>
+        <el-button type="primary" :loading="accountLoading" @click="handleAddAccount">确定</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="showCategoryDialog" title="新增分类" width="420px">
+      <el-form :model="categoryForm" label-position="top">
+        <el-form-item label="分类名称">
+          <el-input v-model="categoryForm.name" placeholder="请输入分类名称" />
+        </el-form-item>
+        <el-form-item label="分类类型">
+          <el-input v-model="categoryForm.type" disabled />
+        </el-form-item>
+      </el-form>
+
+      <template #footer>
+        <el-button @click="showCategoryDialog = false">取消</el-button>
+        <el-button type="primary" :loading="categoryLoading" @click="handleAddCategory">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
-import { useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import request from '@/api/request'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { ElMessage } from 'element-plus'
+import request from '../api/request'
+import { getAccounts, addAccount } from '../api/account'
+import { getCategories, addCategory } from '../api/category'
 
-const router = useRouter()
-const formRef = ref(null)
+const formRef = ref()
 const loading = ref(false)
 
 const accounts = ref([])
-const categories = ref([]) // 变更为从后端获取
+const categories = ref([])
+
+const showAccountDialog = ref(false)
+const showCategoryDialog = ref(false)
+const accountLoading = ref(false)
+const categoryLoading = ref(false)
 
 const form = reactive({
-  accountId: '',
-  amount: 0.01,
+  accountId: null,
+  categoryId: null,
   type: 'EXPENSE',
-  categoryId: '',
+  amount: 0.01,
   remark: ''
 })
 
-// 计算属性：过滤分类
-const filteredCategories = computed(() =>
-  categories.value.filter(c => c.type === form.type)
-)
+const accountForm = reactive({
+  name: '',
+  balance: 0
+})
 
-// 基础数据获取：获取当前用户信息
-const getUserInfo = () => {
-  const userInfoStr = localStorage.getItem('user_info')
-  if (!userInfoStr) return null
-  return JSON.parse(userInfoStr)
+const categoryForm = reactive({
+  name: '',
+  type: 'EXPENSE'
+})
+
+const rules = {
+  accountId: [{ required: true, message: '请选择账户', trigger: 'change' }],
+  categoryId: [{ required: true, message: '请选择分类', trigger: 'change' }],
+  type: [{ required: true, message: '请选择类型', trigger: 'change' }],
+  amount: [{ required: true, message: '请输入金额', trigger: 'blur' }]
 }
 
-/**
- * 核心逻辑：处理账户选择变化
- */
-const handleAccountChange = async (val) => {
-  if (val === 'OTHER') {
-    try {
-      const { value: newName } = await ElMessageBox.prompt('请输入账户名称（若直接确定则归入“其他”）', '新增账户', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        inputPlaceholder: '例如：微信、支付宝'
-      })
+const filteredCategories = computed(() => {
+  return categories.value.filter(item => item.type === form.type)
+})
 
-      const userInfo = getUserInfo()
-      
-      // 如果没有输入名字，直接寻找已有的名为“其他”的账户
-      if (!newName || newName.trim() === '') {
-        const otherAcc = accounts.value.find(a => a.name === '其他')
-        form.accountId = otherAcc ? otherAcc.id : ''
-        return
-      }
-
-      // 如果有输入，调接口新增
-      const res = await request.post('/accounts', { 
-        name: newName, 
-        userId: userInfo.userId || userInfo.id,
-        balance: 0 
-      })
-      if (res.code === 0) {
-        await fetchAccounts() // 刷新列表
-        form.accountId = res.data.id // 自动选中新生成的 ID
-        ElMessage.success('账户添加成功')
-      }
-    } catch {
-      form.accountId = '' // 用户点击取消
-    }
+const loadAccounts = async () => {
+  const res = await getAccounts()
+  accounts.value = res.data || []
+  if (!form.accountId && accounts.value.length > 0) {
+    form.accountId = accounts.value[0].id
   }
 }
 
-/**
- * 核心逻辑：处理分类选择变化
- */
-const handleCategoryChange = async (val) => {
-  if (val === 'OTHER') {
-    try {
-      const { value: newName } = await ElMessageBox.prompt('请输入分类名称（若直接确定则归入“其他”）', '新增分类', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        inputPlaceholder: '例如：买菜、发奖金'
-      })
-
-      const userInfo = getUserInfo()
-
-      if (!newName || newName.trim() === '') {
-        const otherCat = filteredCategories.value.find(c => c.name === '其他')
-        form.categoryId = otherCat ? otherCat.id : ''
-        return
-      }
-
-      const res = await request.post('/category', { 
-        name: newName, 
-        userId: userInfo.userId || userInfo.id,
-        type: form.type 
-      })
-      if (res.code === 0) {
-        await fetchCategories()
-        form.categoryId = res.data.id
-        ElMessage.success('分类添加成功')
-      }
-    } catch {
-      form.categoryId = ''
-    }
-  }
-}
-
-const fetchAccounts = async () => {
-  const userInfo = getUserInfo()
-  if (!userInfo) return router.push('/login')
-  
-  try {
-    const res = await request.get(`/accounts/user/${userInfo.userId || userInfo.id}`)
-    accounts.value = res.data || []
-    if (accounts.value.length > 0 && !form.accountId) {
-      form.accountId = accounts.value[0].id
-    }
-  } catch (err) {
-    ElMessage.error('获取账户失败')
-  }
-}
-
-const fetchCategories = async () => {
-  const userInfo = getUserInfo()
-  if (!userInfo) return
-  try {
-    const res = await request.get(`/category/user/${userInfo.userId || userInfo.id}`)
-    categories.value = res.data || []
-  } catch (err) {
-    console.error('获取分类失败')
+const loadCategories = async () => {
+  const res = await getCategories()
+  categories.value = res.data || []
+  if (!form.categoryId && filteredCategories.value.length > 0) {
+    form.categoryId = filteredCategories.value[0].id
   }
 }
 
 const handleTypeChange = () => {
-  form.categoryId = ''
+  form.categoryId = filteredCategories.value[0]?.id ?? null
 }
 
-const rules = {
-  accountId: [{ required: true, message: '请选择账户', trigger: 'change' }],
-  amount: [{ required: true, message: '请输入金额', trigger: 'blur' }],
-  categoryId: [{ required: true, message: '请选择分类', trigger: 'change' }]
-}
+const handleSubmit = async () => {
+  await formRef.value.validate()
 
-const onSubmit = async () => {
-  if (!formRef.value) return
-  await formRef.value.validate(async (valid) => {
-    if (!valid) return
+  try {
     loading.value = true
-    try {
-      const userInfo = getUserInfo()
-      const postData = { ...form, userId: userInfo.userId || userInfo.id }
-      await request.post('/transactions', postData)
-      ElMessage.success('记账成功')
-      form.amount = 0.01
-      form.remark = ''
-      fetchAccounts() 
-    } catch (err) {
-      console.error('记账失败', err)
-    } finally {
-      loading.value = false
-    }
-  })
+    await request.post('/transactions', form)
+    ElMessage.success('记账成功')
+    resetForm()
+    await loadAccounts()
+  } finally {
+    loading.value = false
+  }
 }
 
-onMounted(() => {
-  fetchAccounts()
-  fetchCategories()
+const handleAddAccount = async () => {
+  if (!accountForm.name) {
+    ElMessage.error('请输入账户名称')
+    return
+  }
+
+  try {
+    accountLoading.value = true
+    const res = await addAccount(accountForm)
+    ElMessage.success('新增账户成功')
+    showAccountDialog.value = false
+    accountForm.name = ''
+    accountForm.balance = 0
+    await loadAccounts()
+    form.accountId = res.data.id
+  } finally {
+    accountLoading.value = false
+  }
+}
+
+const openCategoryDialog = () => {
+  categoryForm.type = form.type
+  categoryForm.name = ''
+  showCategoryDialog.value = true
+}
+
+const handleAddCategory = async () => {
+  if (!categoryForm.name) {
+    ElMessage.error('请输入分类名称')
+    return
+  }
+
+  try {
+    categoryLoading.value = true
+    const res = await addCategory(categoryForm)
+    ElMessage.success('新增分类成功')
+    showCategoryDialog.value = false
+    await loadCategories()
+    form.categoryId = res.data.id
+  } finally {
+    categoryLoading.value = false
+  }
+}
+
+const resetForm = () => {
+  form.type = 'EXPENSE'
+  form.amount = 0.01
+  form.remark = ''
+  form.categoryId = categories.value.find(item => item.type === 'EXPENSE')?.id ?? null
+}
+
+onMounted(async () => {
+  await loadAccounts()
+  await loadCategories()
 })
 </script>
-
-<style scoped>
-.add-container { min-height: 100vh; background-color: #f0f2f5; padding: 40px 20px; }
-.add-card { max-width: 600px; margin: 0 auto; border-radius: 12px; }
-.card-header { display: flex; justify-content: space-between; align-items: center; }
-.title { font-size: 18px; font-weight: bold; }
-.type-selector { width: 100%; display: flex; }
-:deep(.el-radio-button) { flex: 1; }
-:deep(.el-radio-button__inner) { width: 100%; }
-.btn-group { margin-top: 30px; }
-.btn-group .el-button { width: 100%; height: 50px; font-size: 16px; }
-</style>

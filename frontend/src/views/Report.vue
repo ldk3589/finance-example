@@ -1,144 +1,247 @@
 <template>
-  <div class="report-container">
-    <el-page-header @back="goBack" title="返回记账" content="财务报表统计" style="margin-bottom: 20px" />
+  <div>
+    <div class="page-title">统计</div>
+    <div class="page-subtitle">用图表和列表查看你的收入、支出和结余变化</div>
 
-    <el-tabs v-model="activeRange" @tab-change="handleRangeChange" type="border-card">
-      <el-tab-pane label="本周" name="week" />
-      <el-tab-pane label="本月" name="month" />
-      <el-tab-pane label="全部历史" name="all" />
+    <div class="info-cards">
+      <div class="info-card info-card-income">
+        <div class="info-card-label">总收入</div>
+        <div class="info-card-value">¥ {{ Number(report.totalIncome || 0).toFixed(2) }}</div>
+      </div>
 
-      <el-row :gutter="20" style="margin-top: 20px">
-        <el-col :span="12">
-          <el-card shadow="never" header="分类支出占比">
-            <div ref="pieChartRef" style="height: 350px"></div>
-          </el-card>
-        </el-col>
-        <el-col :span="12">
-          <el-card shadow="never" header="收支趋势对比">
-            <div ref="barChartRef" style="height: 350px"></div>
-          </el-card>
-        </el-col>
-      </el-row>
+      <div class="info-card info-card-expense">
+        <div class="info-card-label">总支出</div>
+        <div class="info-card-value">¥ {{ Number(report.totalExpense || 0).toFixed(2) }}</div>
+      </div>
 
-      <el-card shadow="never" header="明细列表" style="margin-top: 20px">
-        <el-table :data="tableData" stripe style="width: 100%">
-          <el-table-column prop="createTime" label="时间" />
-          <el-table-column prop="categoryName" label="分类" />
-          <el-table-column prop="type" label="类型">
-            <template #default="scope">
-              <el-tag :type="scope.row.type === 'INCOME' ? 'success' : 'danger'">
-                {{ scope.row.type === 'INCOME' ? '收入' : '支出' }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="amount" label="金额">
-            <template #default="scope">
-              <span :style="{ color: scope.row.type === 'INCOME' ? '#67C23A' : '#F56C6C' }">
-                {{ scope.row.type === 'INCOME' ? '+' : '-' }}¥{{ scope.row.amount }}
-              </span>
-            </template>
-          </el-table-column>
-        </el-table>
-      </el-card>
-    </el-tabs>
+      <div class="info-card info-card-balance">
+        <div class="info-card-label">当前结余</div>
+        <div class="info-card-value">¥ {{ balance.toFixed(2) }}</div>
+      </div>
+    </div>
+
+    <el-card>
+      <template #header>
+        <div class="toolbar-row">
+          <span class="section-title">统计概览</span>
+          <el-select v-model="range" style="width: 180px" @change="loadReport">
+            <el-option label="近 7 天" value="week" />
+            <el-option label="本月" value="month" />
+            <el-option label="本年" value="year" />
+          </el-select>
+        </div>
+      </template>
+
+      <div v-loading="loading">
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-card shadow="never">
+              <template #header>支出分类占比</template>
+              <div ref="pieRef" class="chart-box"></div>
+            </el-card>
+          </el-col>
+
+          <el-col :span="12">
+            <el-card shadow="never">
+              <template #header>收支趋势</template>
+              <div ref="barRef" class="chart-box"></div>
+            </el-card>
+          </el-col>
+        </el-row>
+
+        <div style="height: 20px"></div>
+
+        <el-card shadow="never">
+          <template #header>交易流水</template>
+
+          <el-empty
+            v-if="!report.list || report.list.length === 0"
+            description="当前时间范围内暂无数据"
+          />
+
+          <el-table v-else :data="report.list" style="width: 100%">
+            <el-table-column prop="createTime" label="时间" width="180" />
+            <el-table-column prop="categoryName" label="分类" width="140" />
+            <el-table-column prop="type" label="类型" width="100">
+              <template #default="{ row }">
+                <el-tag :type="row.type === 'INCOME' ? 'success' : 'danger'" round>
+                  {{ row.type === 'INCOME' ? '收入' : '支出' }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="amount" label="金额" width="120">
+              <template #default="{ row }">
+                <span :style="{ color: row.type === 'INCOME' ? '#059669' : '#dc2626', fontWeight: 700 }">
+                  {{ row.type === 'INCOME' ? '+' : '-' }}{{ Number(row.amount || 0).toFixed(2) }}
+                </span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="remark" label="备注" />
+          </el-table>
+        </el-card>
+      </div>
+    </el-card>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import * as echarts from 'echarts'
-import { getReportData } from '@/api/report'
-import { ElMessage } from 'element-plus'
+import request from '../api/request'
 
-const router = useRouter()
-const activeRange = ref('month')
-const pieChartRef = ref(null)
-const barChartRef = ref(null)
-const tableData = ref([])
+const loading = ref(false)
+const range = ref('month')
+const pieRef = ref(null)
+const barRef = ref(null)
 
 let pieChart = null
 let barChart = null
+let resizeTimer = null
 
-const goBack = () => router.back()
+const report = reactive({
+  totalIncome: 0,
+  totalExpense: 0,
+  pieData: [],
+  barData: [],
+  list: []
+})
 
-const initCharts = () => {
-  if (pieChartRef.value) pieChart = echarts.init(pieChartRef.value)
-  if (barChartRef.value) barChart = echarts.init(barChartRef.value)
-}
+const balance = computed(() => {
+  return Number(report.totalIncome || 0) - Number(report.totalExpense || 0)
+})
 
-const fetchData = async () => {
+const loadReport = async () => {
   try {
-    const userInfoStr = localStorage.getItem('user_info')
-    if (!userInfoStr) return
-    
-    const userInfoWrap = JSON.parse(userInfoStr)
-    const userId = userInfoWrap.id || (userInfoWrap.data && userInfoWrap.data.id)
-    
-    // 发起请求
-    const axiosResponse = await getReportData(userId, activeRange.value)
-    
-    // 解析 Axios 响应
-    const result = axiosResponse
-    const reportData = result.data
+    loading.value = true
+    const res = await request.get('/reports/stats', {
+      params: { range: range.value }
+    })
 
-    // 💡 关键修改：判断 code 是否为 0 (根据你的截图，成功是 0)
-    if (result.code === 0 && reportData) {
-      
-      // 1. 更新饼图 (pieData)
-      pieChart.setOption({
-        tooltip: { trigger: 'item', formatter: '{b}: ¥{c} ({d}%)' },
-        series: [{ 
-          type: 'pie', 
-          data: reportData.pieData || [], 
-          radius: '50%' 
-        }]
-      })
-      
-      // 2. 更新柱状图 (使用后端返回的 barData 数组)
-      // 根据截图，barData 格式为 [{name: "总收入", value: 0}, {name: "总支出", value: 75}]
-      const xAxisData = reportData.barData.map(item => item.name)
-      const seriesData = reportData.barData.map(item => {
-        return {
-          value: item.value,
-          itemStyle: { color: item.name === '总收入' ? '#67C23A' : '#F56C6C' }
-        }
-      })
+    Object.assign(report, {
+      totalIncome: res.data?.totalIncome || 0,
+      totalExpense: res.data?.totalExpense || 0,
+      pieData: res.data?.pieData || [],
+      barData: res.data?.barData || [],
+      list: res.data?.list || []
+    })
 
-      barChart.setOption({
-        tooltip: { trigger: 'axis' },
-        xAxis: { type: 'category', data: xAxisData },
-        yAxis: { type: 'value' },
-        series: [{ 
-          data: seriesData, 
-          type: 'bar',
-          barWidth: '40%'
-        }]
-      })
-
-      // 3. 更新明细列表
-      tableData.value = reportData.list || []
-      
-    } else {
-      ElMessage.warning(result.message || '获取数据失败')
-    }
-  } catch (error) {
-    console.error('报表数据渲染失败:', error)
+    await nextTick()
+    initCharts()
+    renderCharts()
+  } finally {
+    loading.value = false
   }
 }
 
-const handleRangeChange = () => fetchData()
+const initCharts = () => {
+  if (pieRef.value && !pieChart) {
+    pieChart = echarts.init(pieRef.value)
+  }
+  if (barRef.value && !barChart) {
+    barChart = echarts.init(barRef.value)
+  }
+}
 
-onMounted(() => {
-  initCharts()
-  fetchData()
-  window.addEventListener('resize', () => {
+const renderCharts = () => {
+  if (pieChart) {
+    pieChart.setOption({
+      title: report.pieData.length === 0
+        ? {
+            text: '暂无数据',
+            left: 'center',
+            top: 'center',
+            textStyle: { fontSize: 16, fontWeight: 500, color: '#9ca3af' }
+          }
+        : undefined,
+      tooltip: { trigger: 'item' },
+      legend: { bottom: 0 },
+      series: [
+        {
+          type: 'pie',
+          radius: ['42%', '72%'],
+          avoidLabelOverlap: true,
+          data: report.pieData.length === 0 ? [] : report.pieData
+        }
+      ]
+    })
+    pieChart.resize()
+  }
+
+  if (barChart) {
+    barChart.setOption({
+      title: report.barData.length === 0
+        ? {
+            text: '暂无数据',
+            left: 'center',
+            top: 'center',
+            textStyle: { fontSize: 16, fontWeight: 500, color: '#9ca3af' }
+          }
+        : undefined,
+      tooltip: { trigger: 'axis' },
+      legend: { data: ['收入', '支出'] },
+      grid: { left: 36, right: 20, top: 46, bottom: 36 },
+      xAxis: {
+        type: 'category',
+        data: (report.barData || []).map(item => item.name)
+      },
+      yAxis: { type: 'value' },
+      series: [
+        {
+          name: '收入',
+          type: 'bar',
+          barMaxWidth: 26,
+          data: (report.barData || []).map(item => Number(item.income || 0))
+        },
+        {
+          name: '支出',
+          type: 'bar',
+          barMaxWidth: 26,
+          data: (report.barData || []).map(item => Number(item.expense || 0))
+        }
+      ]
+    })
+    barChart.resize()
+  }
+}
+
+const handleResize = () => {
+  clearTimeout(resizeTimer)
+  resizeTimer = setTimeout(() => {
     pieChart?.resize()
     barChart?.resize()
-  })
+  }, 120)
+}
+
+watch(
+  () => [report.pieData, report.barData],
+  async () => {
+    await nextTick()
+    initCharts()
+    renderCharts()
+  },
+  { deep: true }
+)
+
+onMounted(async () => {
+  await nextTick()
+  initCharts()
+  await loadReport()
+  window.addEventListener('resize', handleResize)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleResize)
+  clearTimeout(resizeTimer)
+  pieChart?.dispose()
+  barChart?.dispose()
+  pieChart = null
+  barChart = null
 })
 </script>
 
 <style scoped>
-.report-container { padding: 30px; background-color: #f5f7fa; min-height: 100vh; }
+.chart-box {
+  height: 320px;
+  width: 100%;
+}
 </style>

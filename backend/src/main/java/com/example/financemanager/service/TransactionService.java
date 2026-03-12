@@ -1,16 +1,12 @@
 package com.example.financemanager.service;
 
-import com.example.financemanager.entity.Transaction;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.example.financemanager.entity.Transaction;
 
-/**
- * <p>
- *  服务类
- * </p>
- *
- * @author dk
- * @since 2026-01-22
- */
+import java.time.LocalDateTime;
+import java.util.List;
+
 public interface TransactionService extends IService<Transaction> {
 
+    List<Transaction> listUserTransactionsFrom(Long userId, LocalDateTime startTime);
 }

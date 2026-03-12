@@ -1,16 +1,13 @@
 package com.example.financemanager.service;
 
-import com.example.financemanager.entity.Category;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.example.financemanager.entity.Category;
 
-/**
- * <p>
- *  服务类
- * </p>
- *
- * @author dk
- * @since 2026-01-22
- */
+import java.util.List;
+
 public interface CategoryService extends IService<Category> {
 
+    List<Category> listCurrentUserCategories(Long userId);
+
+    Category addCategory(Long userId, String name, String type);
 }

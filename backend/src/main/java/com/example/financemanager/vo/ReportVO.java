@@ -1,15 +1,35 @@
 package com.example.financemanager.vo;
 
+import com.example.financemanager.entity.Transaction;
 import lombok.Data;
+
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 @Data
 public class ReportVO {
-    private BigDecimal totalIncome;    // 总收入
-    private BigDecimal totalExpense;   // 总支出
-    private List<Map<String, Object>> pieData; // 饼图数据: [{name: '餐饮', value: 100}, ...]
-    private List<Map<String, Object>> barData; // 柱状图数据
-    private List<?> list;              // 明细列表
+
+    private BigDecimal totalIncome = BigDecimal.ZERO;
+
+    private BigDecimal totalExpense = BigDecimal.ZERO;
+
+    private List<PieItem> pieData = new ArrayList<>();
+
+    private List<BarItem> barData = new ArrayList<>();
+
+    private List<Transaction> list = new ArrayList<>();
+
+    @Data
+    public static class PieItem {
+        private String name;
+        private BigDecimal value;
+    }
+
+    @Data
+    public static class BarItem {
+        private String name;
+        private BigDecimal income = BigDecimal.ZERO;
+        private BigDecimal expense = BigDecimal.ZERO;
+    }
 }
