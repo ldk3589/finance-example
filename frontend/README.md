@@ -2,94 +2,171 @@
 
 [English](README.md) | [中文](README.zh-CN.md)
 
-Finance Manager Frontend
+A Vue 3 based frontend application for the Finance Manager project.
 
-A modern, responsive personal finance management frontend built with Vue 3 + Vite, featuring transaction tracking, account management, and data visualization.
+This module provides the user interface for login, registration, account viewing, category management, transaction recording, and financial report visualization. It communicates with the backend through REST APIs.
 
----
-## 🧱 Tech Stack
-- Framework: Vue 3 (Composition API)
+## Tech Stack
 
-- Build Tool: Vite
+* Vue 3
+* Vite
+* Vue Router
+* Pinia
+* Axios
+* Element Plus
+* ECharts
 
-- Routing: Vue Router
+## Project Structure
 
-- UI Component Library: Element Plus
+```
+frontend/                             # Frontend folder
+├── src/                              # Source code
+│   ├── api/                          # Link to backend
+│   │   ├── request.js                # Send data tool
+│   │   ├── auth.js                   # Login link
+│   │   ├── account.js                # Account link
+│   │   ├── category.js               # Category link
+│   │   └── transaction.js            # Money link
+│   ├── layout/                       # Page layout
+│   │   └── Layout.vue                # Main page box
+│   ├── router/                       # Page links
+│   │   └── index.js                  # Link rules
+│   ├── stores/                       # Save data
+│   │   └── auth.js                   # Save login info
+│   ├── utils/                        # Helpful tools
+│   │   └── auth.js                   # Login tool
+│   ├── views/                        # Page views
+│   │   ├── Login.vue                 # Login page
+│   │   ├── Register.vue              # Sign up page
+│   │   ├── Add.vue                   # Add data page
+│   │   └── Report.vue                # Report page
+│   ├── App.vue                       # Main Vue page
+│   ├── main.js                       # Main JS file
+│   └── style.css                     # Page styles
+├── package.json                      # Tool list
+└── vite.config.js                    # Vite tool settings
+```
 
-- HTTP Client: Axios
----
-## 📁 Project Structure
+## Main Pages
 
-    frontend
-    ├── src
-    │   ├── api           # API request wrappers
-    │   ├── views         # Page components (Login / Add / Home, etc.)
-    │   ├── router        # Router configuration
-    │   ├── utils         # Utility functions
-    │   ├── App.vue
-    │   └── main.js
-    │
-    ├── public
-    ├── package.json
-    └── vite.config.js
+### 1. Login Page
 
----
+* User login form
+* Username and password validation
+* Save login state after successful login
 
-## ⚙️ Prerequisites
-- Node.js ≥ 18
+### 2. Register Page
 
-- npm ≥ 9
----
-## 🛠️ Getting Started
-### 1️⃣ Install Dependencies
-    npm install
+* User registration form
+* Confirm password validation
+* Jump to login after successful registration
 
-### 2️⃣ Run the Development Server
-    npm run dev
+### 3. Add Page
 
-Access the application at:
+* Record income and expense data
+* Select account and category
+* Add new account
+* Add new category
+* View current account balances
 
-    http://localhost:5173
+### 4. Report Page
 
-🔗 API Proxy Configuration
+* View total income
+* View total expense
+* View current balance
+* Expense pie chart
+* Income and expense bar chart
+* Transaction list
 
-- The frontend communicates with the backend through a proxy configured in vite.config.js:
+## API Communication
 
-        server: {
-        proxy: {
-        '/api': {
-        target: 'http://localhost:8080',
-        changeOrigin: true
-        }
-        }
-        }
+The frontend uses Axios and sends requests to backend APIs through `/api` proxy or base URL.
 
-#### 🔐 Authentication Logic
+Main API files:
 
-After a successful login:
+* `src/api/request.js`
+* `src/api/auth.js`
+* `src/api/account.js`
+* `src/api/category.js`
+* `src/api/transaction.js`
 
-- User information is stored in localStorage
+## Login State Management
 
-Route guards:
+The frontend uses:
 
-- Unauthenticated access → automatically redirected to /login
+* Pinia for auth store
+* localStorage for persisted user information
+* Vue Router guards for protected routes
 
-### 📌 Pages Overview
+Stored user information usually includes:
 
-- /login – User login page
+```
+{
+  "userId": 1,
+  "username": "test",
+  "token": "jwt-token"
+}
+```
 
-- /add – Add new income or expense records
+## Route Design
 
-- /home – Account overview and data visualization
+Main routes:
 
-### ✨ Features
+* /login
+* /register
+* /add
+* /report
 
-- Built with Vue 3 Composition API
+Protected pages require a valid token.
 
-- Centralized Axios request handling
+## How to Run
 
-- Route guards for authentication control
+### 1. Install dependencies
 
-- Element Plus UI components
+```
+cd frontend
+npm install
+```
 
-- Fully decoupled frontend and backend architecture
+### 2. Start development server
+
+```
+npm run dev
+```
+
+### 3. Build for production
+
+```
+npm run build
+```
+
+## UI Design
+
+The frontend uses Element Plus as the main UI component library.
+
+Main design ideas:
+
+* Clean dashboard layout
+* Card-based content display
+* Responsive page structure
+* Unified colors, spacing, and rounded corners
+* Better chart presentation for reports
+
+## Notes
+
+* Make sure the backend is running before using the frontend
+* Check `request.js` if login expires or API requests fail
+* The Authorization header should use Bearer token format
+* If report charts are empty, first check whether backend report data is returned correctly
+
+## Future Improvements
+
+* Transaction edit and delete pages
+* Better mobile adaptation
+* Theme switching
+* More detailed report filters
+* Export and print support
+
+## License
+
+This module is for study and practice use.

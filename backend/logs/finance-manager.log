@@ -20,3 +20,16 @@ This generated password is for development use only. Your security configuration
 2026-03-12 14:21:51 INFO  [main] o.a.coyote.http11.Http11NioProtocol - Starting ProtocolHandler ["http-nio-8080"]
 2026-03-12 14:21:51 INFO  [main] o.s.b.w.e.tomcat.TomcatWebServer - Tomcat started on port 8080 (http) with context path '/'
 2026-03-12 14:21:51 INFO  [main] c.e.f.FinanceManagerApplication - Started FinanceManagerApplication in 3.859 seconds (process running for 4.494)
+2026-03-12 14:22:26 INFO  [http-nio-8080-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-03-12 14:22:26 INFO  [http-nio-8080-exec-1] o.s.web.servlet.DispatcherServlet - Initializing Servlet 'dispatcherServlet'
+2026-03-12 14:22:26 INFO  [http-nio-8080-exec-1] o.s.web.servlet.DispatcherServlet - Completed initialization in 1 ms
+2026-03-12 14:22:51 INFO  [http-nio-8080-exec-2] com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Starting...
+2026-03-12 14:22:51 INFO  [http-nio-8080-exec-2] com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@3787f50b
+2026-03-12 14:22:51 INFO  [http-nio-8080-exec-2] com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Start completed.
+2026-03-12 14:22:51 INFO  [http-nio-8080-exec-2] c.e.f.service.impl.UserServiceImpl - 用户注册尝试：username=user1
+2026-03-12 14:22:52 INFO  [http-nio-8080-exec-2] c.e.f.service.impl.UserServiceImpl - 正在为新用户 user1 初始化默认账户和分类
+2026-03-12 14:22:52 INFO  [http-nio-8080-exec-2] c.e.f.s.impl.AccountServiceImpl - 正在为用户 1 初始化默认账户
+2026-03-12 14:23:01 INFO  [http-nio-8080-exec-3] c.e.f.service.impl.UserServiceImpl - 用户登录尝试：username=user1
+2026-03-12 14:50:49 INFO  [http-nio-8080-exec-2] c.e.f.service.impl.UserServiceImpl - 用户登录尝试：username=user1
+2026-03-12 14:53:01 INFO  [SpringApplicationShutdownHook] com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown initiated...
+2026-03-12 14:53:01 INFO  [SpringApplicationShutdownHook] com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Shutdown completed.
